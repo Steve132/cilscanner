@@ -71,6 +71,8 @@ cv::Mat dilate(const cv::Mat& imgin,int s)
 }
 
 
+
+
 vector<cv::Vec3f> detect_circles(const cv::Mat& g,cv::Mat imgtarget)
 {
 	vector<cv::Vec3f> circles;
@@ -160,7 +162,7 @@ circle get_circle(const cv::Mat& imgin)
 	cv::Mat mask=labels == biggest_label;
 
 	rmax&=mask;
-	display_floatmap(rmax);
+//	display_floatmap(rmax);
 	
 	rmax.convertTo(rmax,CV_32F);
 	cv::Mat row_counts=rmax*cv::Mat(rmax.cols,1,CV_32F,1.0);
@@ -170,9 +172,12 @@ circle get_circle(const cv::Mat& imgin)
 	pair<size_t,size_t> xbnds=bounds_gt(column_counts.ptr<float>(),column_counts.ptr<float>()+column_counts.cols,threshold);
 	pair<size_t,size_t> ybnds=bounds_gt(row_counts.ptr<float>(),row_counts.ptr<float>()+row_counts.rows,threshold);
 	
+	circle circ;
+ 	circ.r=(xbnds.second-xbnds.first)/2.0;
+	circ.x=xbnds.first+circ.r;
+	circ.y=ybnds.first+circ.r;
 	
-	
-	return {0.0,0.0,1.0};
+	return circ;
 	
 
 	// Briefly attempt segmenting red with vanilla thresholding:
@@ -223,7 +228,10 @@ int main(int argc,char** argv)
 		vector<string> args(argv,argv+argc);
 		for(int i=1;i<args.size();i++)
 		{
-			cout << get_circle(read_floatmap(args[i])) << endl;
+			circle c=get_circle(read_floatmap(args[i]));
+			cout << c << endl;
+			
+			
 		}
 		return 0;
 	} 
