@@ -7,4 +7,7 @@ target_link_libraries(floatmaps X11 ${OpenCV_LIBS} opencv_highgui)# for cimg_dis
 add_executable(findred 
 	findred.cpp
 )
+add_executable(findlightsources
+	findlightsources.cpp
+)
 target_link_libraries(findred floatmaps)

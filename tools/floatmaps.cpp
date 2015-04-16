@@ -67,7 +67,7 @@ static cv::Mat to_mat(const CImg<float>& image)
 cv::Mat read_floatmap(const std::string& fn)
 {
 	CImg<float> image(fn.c_str());
-	std::cerr<<image.width() << ' ' << image.height() << ' ' << image.depth() << ' ' << image.spectrum() << std::endl;
+	//std::cerr<<image.width() << ' ' << image.height() << ' ' << image.depth() << ' ' << image.spectrum() << std::endl;
 	
 	return to_mat(image);
 }

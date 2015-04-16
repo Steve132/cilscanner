@@ -6,8 +6,6 @@
 #include<opencv2/imgproc/imgproc.hpp>
 #include"floatmaps.hpp"
 #include<algorithm>
-#include <X11/Xlib.h>
-#include <CL/cl_platform.h>
 using namespace std;
 
 struct circle
@@ -70,7 +68,17 @@ cv::Mat dilate(const cv::Mat& imgin,int s)
 	return out;
 }
 
-
+void draw_circle(const circle& c,cv::Mat& target,const cv::Scalar& color)
+{
+	cv::Point center(cvRound(c.x), cvRound(c.y));
+	int radius = cvRound(c.r);
+      // circle center
+	//cv::circle( eq, center, 3, cv::Scalar(0,255,0), -1, 8, 0 );
+	// circle outline
+	//cv::circle( eq, center, radius, cv::Scalar(0,0,255), 3, 8, 0 );
+	
+	cv::circle(target, center, radius, color, 3, 8, 0);
+}
 
 
 vector<cv::Vec3f> detect_circles(const cv::Mat& g,cv::Mat imgtarget)
@@ -88,14 +96,7 @@ cv::HoughCircles( g, circles, CV_HOUGH_GRADIENT, 1, g.rows/20, 24, 60, 200, 1600
 		  cout << circles[i][k];
 	  }
 	  cout << endl;
-      cv::Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
-      int radius = cvRound(circles[i][2]);
-      // circle center
-	//cv::circle( eq, center, 3, cv::Scalar(0,255,0), -1, 8, 0 );
-	// circle outline
-	//cv::circle( eq, center, radius, cv::Scalar(0,0,255), 3, 8, 0 );
-	
-	cv::circle(imgtarget, center, radius, cv::Scalar(255.0), 3, 8, 0);
+      
    }
 	if(circles.size() > 0)
 	{
@@ -124,7 +125,7 @@ int most_common_int(const int* begin,const int* end,int flr=0)
 
 pair<size_t,size_t> bounds_gt(const float* begin,const float* end,float threshold)
 {
-	size_t n=0;
+	size_t n=end-begin;
 	pair<size_t,size_t> bnds=make_pair(0,0);
 	for(size_t i=0;i<n;i++)
 	{
@@ -145,7 +146,15 @@ pair<size_t,size_t> bounds_gt(const float* begin,const float* end,float threshol
 	return bnds;
 }
 
-circle get_circle(const cv::Mat& imgin)
+cv::Mat remove_smalls(const cv::Mat& m)
+{
+	cv::Mat labels=bwlabel(m);
+	
+	int biggest_label=most_common_int(labels.ptr<int>(),labels.ptr<int>()+labels.rows*labels.cols,1);
+	return labels == biggest_label;	
+}
+
+circle get_circle(const cv::Mat& imgin,bool display=false)
 {
 	cv::Mat img=imgin.clone();
 	
@@ -156,19 +165,27 @@ circle get_circle(const cv::Mat& imgin)
 	
 	cv::Mat rmax=(rgb[0]/(rgb[1]+rgb[2])) > 1.0;
 	cv::Mat dilated=dilate(rmax,5);
-	cv::Mat labels=bwlabel(dilated);
+	cv::Mat labels=remove_smalls(dilated);
 	
-	int biggest_label=most_common_int(labels.ptr<int>(),labels.ptr<int>()+labels.rows*labels.cols,1);
-	cv::Mat mask=labels == biggest_label;
+	rmax=labels;
+	
+	rmax=dilate(rmax,100);
+	
+	cv::Mat hsv;
+	cv::cvtColor(img,hsv, CV_BGR2HSV);
+	vector<cv::Mat> channels(3);
+	cv::split(hsv,channels);
 
-	rmax&=mask;
-//	display_floatmap(rmax);
+	rmax &= (channels[2] < 0.8);	
+	
+	rmax = remove_smalls(rmax);
+	
 	
 	rmax.convertTo(rmax,CV_32F);
-	cv::Mat row_counts=rmax*cv::Mat(rmax.cols,1,CV_32F,1.0);
-	cv::Mat column_counts=cv::Mat(1,rmax.rows,CV_32F,1.0)*rmax;
+	cv::Mat row_counts=rmax*cv::Mat(rmax.cols,1,CV_32F,1.0f);
+	cv::Mat column_counts=cv::Mat(1,rmax.rows,CV_32F,1.0f)*rmax;
 	
- 	float threshold=0.99f;
+ 	float threshold=0.95f;
 	pair<size_t,size_t> xbnds=bounds_gt(column_counts.ptr<float>(),column_counts.ptr<float>()+column_counts.cols,threshold);
 	pair<size_t,size_t> ybnds=bounds_gt(row_counts.ptr<float>(),row_counts.ptr<float>()+row_counts.rows,threshold);
 	
@@ -177,6 +194,20 @@ circle get_circle(const cv::Mat& imgin)
 	circ.x=xbnds.first+circ.r;
 	circ.y=ybnds.first+circ.r;
 	
+	if(display)
+	{
+		display_floatmap(rmax);
+		vector<cv::Mat> rgb(3);
+		
+		cv::split(img,rgb);
+		for(int i=0;i<3;i++)
+		{
+			cv::threshold(rgb[i],rgb[i],1.0,1.0,CV_THRESH_TRUNC);
+		}
+		cv::merge(rgb,img);
+		draw_circle(circ,img,cv::Scalar(0.0,1.0,0.0));
+		display_floatmap(img);
+	}
 	return circ;
 	
 
@@ -190,7 +221,7 @@ circle get_circle(const cv::Mat& imgin)
 	// Most promising sounds like fixing this ^
 
 	// Attempt segmenting red:
-	cv::Mat hsv;
+//	cv::Mat hsv;
 	//cv::GaussianBlur(eq, eq, cv::Size(9, 9), 2, 2, cv::BORDER_REFLECT);
 //	display_floatmap(eq);
 
@@ -226,12 +257,23 @@ int main(int argc,char** argv)
 	try
 	{
 		vector<string> args(argv,argv+argc);
+		vector<string> circles;
+		bool preview=true;
 		for(int i=1;i<args.size();i++)
 		{
-			circle c=get_circle(read_floatmap(args[i]));
+			if(args[i][0]=='-')
+			{
+				preview=true;
+			}
+			else
+			{
+				circles.push_back(args[i]);
+			}
+		}
+		for(int i=0;i<circles.size();i++)
+		{
+			circle c=get_circle(read_floatmap(circles[i]),preview);
 			cout << c << endl;
-			
-			
 		}
 		return 0;
 	} 

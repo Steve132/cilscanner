@@ -54,6 +54,9 @@ protected:
 		print_arghelp(name,triggers,type,description,false);
 		return def;
 	}
+	
+	template<class ArgType>
+	
 public:
 	template<class Iter>
 	options(Iter b,Iter e,const char* s="No summary",const char* d="No program description",std::ostream& ho=std::cout):
