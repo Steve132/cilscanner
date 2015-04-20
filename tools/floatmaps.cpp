@@ -2,6 +2,10 @@
 #include<vector>
 #include<stdexcept>
 #include<iostream>
+#include<cstdio>
+#include<cstdlib>
+#include<fstream>
+#include<sstream>
 #include"floatmaps.hpp"
 using namespace cimg_library;
 
@@ -62,6 +66,54 @@ static cv::Mat to_mat(const CImg<float>& image)
 		copy_skipped(m.ptr<float>()+mcoffset,image.data(0,0,0,c),n,m.channels());
 	}
 	return m;
+}
+floatmap_metadata read_cr2_metadata(const std::string& fn)
+{
+	std::string newname(tmpnam(NULL));
+	std::string command("dcraw -i -v ");
+	command+="\"";
+	command+=fn;
+	command+="\" > ";
+	command+=newname;
+	int r=system(command.c_str());
+	if(r!=0)
+	{
+		throw std::runtime_error("Some kind of error in dcraw metadata");
+	}
+	
+	std::ifstream datain(newname.c_str());
+	std::string line;
+	floatmap_metadata md;
+	while (std::getline(datain, line))
+	{
+		std::istringstream iss(line);
+		if(line=="")
+		{
+			continue;
+		}
+		std::string cmd;
+		iss >> cmd;
+		if(cmd=="ISO")
+		{
+			iss >> cmd >> md.iso_speed;
+		}
+		else if(cmd=="Shutter:")
+		{
+			//iss >> md.shutter; TODO
+		}
+		else if(cmd=="Aperture:")
+		{
+			//iss >> md.aperture
+		}
+		else if(cmd=="Focal")
+		{
+			iss >> cmd >> md.focal_length;
+		}
+	}
+	
+	remove(newname.c_str());
+	
+	return md;
 }
 
 cv::Mat read_floatmap(const std::string& fn)
