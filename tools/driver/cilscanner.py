@@ -1,8 +1,10 @@
 import serial
+import time
 
 class Scanner(object):
 	def __init__(self,port='/dev/ttyACM0'):
 		self.serport=serial.Serial(port,9600)
+		time.sleep(1.75)
 	def pattern(self,pattern):
 		binpattern=pattern
 		if(not isinstance(binpattern,(int, long))):
