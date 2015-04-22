@@ -30,11 +30,11 @@ ostream& operator<<(ostream& out,const lightsource& ls)
 {
 	for(int i=0;i<3;i++)
 	{
-		out << ls.direction[i];
+		out << ls.direction[i] << ' ';
 	}
 	for(int i=0;i<3;i++)
 	{
-		out << ls.intensity[i];
+		out << ls.intensity[i] << ' ';
 	}
 	return out;
 }
@@ -45,6 +45,8 @@ cv::Vec3f median_color(const cv::Mat& imgin)
 	vector<cv::Mat> rgb(3);
 	vector<cv::Mat> rgbeq(3);
 	cv::split(imgin,rgb);
+	
+//	float somepixels[imgin.rows*imgin.cols];
 	std::vector<float> pxcopy(imgin.rows*imgin.cols);
 	for(int c=0;c<3;c++)
 	{
@@ -54,16 +56,17 @@ cv::Vec3f median_color(const cv::Mat& imgin)
 		float* start=(float*)rgbeq[c].data;
 		size_t n=imgin.rows*imgin.cols;
 		copy(start,start+n,pxcopy.begin());
-		size_t percent2=(n*2)/100;
+		size_t percent2=(n*2)/1000;
 		size_t p1=n/2-percent2/2;
 		size_t p2=n/2+percent2/2;
 		
-		std::nth_element(pxcopy.begin(),pxcopy.begin()+n/2,pxcopy.end());
-		colorout[c]=pxcopy[n/2];
+	//	std::nth_element(pxcopy.begin(),pxcopy.begin()+n/2,pxcopy.end());
+	//	colorout[c]=pxcopy[n/2];
 		
 	//	std::nth_element(pxcopy.begin(),pxcopy.begin()+p1,pxcopy.begin()+p2); //linear time create range in the middle that contains middle 2% of pixels
 	//	std::nth_element(pxcopy.begin()+p1,pxcopy.begin()+p2,pxcopy.end());
-	//	colorout[c]=std::accumulate(pxcopy.begin()+n/2-percent2/2,pxcopy.end()+n/2+percent2/2,0.0f)/(float)percent2;
+		std::sort(pxcopy.begin(),pxcopy.end());
+		colorout[c]=std::accumulate(pxcopy.begin()+p1,pxcopy.begin()+p2,0.0f)/(float)percent2;
 	}
 	return colorout;
 }
@@ -73,10 +76,12 @@ cv::Mat whitebalance(const cv::Mat& imgin)
 	cv::Mat img;
 	
 	cv::Vec3f median=median_color(imgin);
+	//cout << median;
 	vector<cv::Mat> rgb(3);
 	cv::split(imgin,rgb);
 	for(int c=0;c<3;c++)
 	{
+		cv::medianBlur(rgb[c],rgb[c],5); // not 5?
 		rgb[c]/=median[c];
 	}
 	cv::merge(rgb,img);
@@ -221,9 +226,9 @@ cv::Mat remove_smalls(const cv::Mat& m)
 
 circle get_circle(const cv::Mat& imgin,bool display=false)
 {
-	cv::Mat img=imgin.clone();
+	//cv::Mat img=imgin.clone();
 	
-	img=whitebalance(img);
+	cv::Mat img=whitebalance(imgin);
 	
 	vector<cv::Mat> rgb;
 	cv::split(img,rgb);
@@ -234,7 +239,7 @@ circle get_circle(const cv::Mat& imgin,bool display=false)
 	
 	rmax=labels;
 	
-	rmax=dilate(rmax,100);
+	rmax=dilate(rmax,50);
 	
 	cv::Mat hsv;
 	cv::cvtColor(img,hsv, CV_BGR2HSV);
@@ -281,7 +286,7 @@ cv::Vec3d reflection_angle(double fovc_deg,const cv::Vec2d& normalized_circle_lo
 	
 	double r=ballrad;
 	double f2_deg=fovc_deg/2;
-	double f2=f2_deg*M_PI/180.0;
+	 double f2=f2_deg*M_PI/180.0;
 	double X=cv::norm(normalized_circle_location);
 	double u=r/cos(f2);
 	double m=tan(f2);
@@ -309,8 +314,8 @@ m2=m*m;
 	double px=x;
 	double py=y;
 	
-	double alpha=atan2(py,px);
-	double fovx=X*tan(f2);
+	double alpha=atan(py/px);
+	double fovx=atan(X*tan(f2));
 	
 	double rwidth=alpha+fovx;
 	double reflect_angle=fovx+rwidth*2.0;
@@ -330,39 +335,50 @@ cv::Vec3d get_lightsource_direction(const cv::Mat& image,float fovy,double ballr
 	std::vector<float> channel(image.rows*image.cols);
 	static const int num_toppix=30;
 	
-	cv::Mat circbin(image.rows,image.cols,CV_8UC1,0);
-	cv::circle(circbin,cv::Point2i(c.x,c.y),c.r,255,-1);
+//	cv::Mat circbin(image.rows,image.cols,CV_8UC1,0);
+//	cv::circle(circbin,cv::Point2i(c.y,c.x),c.r,255,-1);
 	
-	cv::Vec2d dir2d(0.0f,0.0f);
+	cv::Vec2d dir2d(0.0,0.0);
 	
 	for(int i=0;i<3;i++)
 	{
 		copy(rgb[i].ptr<float>(),rgb[i].ptr<float>()+rgb[i].rows*rgb[i].cols,channel.begin());
-		std::nth_element(channel.begin(),channel.begin()+num_toppix,channel.end());
-		float threshold=channel[num_toppix];
-		cv::Mat bin = rgb[i] > threshold & circbin;
+		std::sort(channel.begin(),channel.end());
+		float threshold=*(std::unique(channel.begin(),channel.end())-num_toppix-1);
+		cv::Mat bin = remove_smalls(rgb[i] > threshold);// & circbin;
+		
+		//display_floatmap(bin);
 		
 		dir2d+=average_center(bin);
 	}
 	dir2d/=3.0;
 	
-	dir2d-=cv::Vec2d(c.x,c.y);
+	dir2d-=cv::Vec2d(c.y,c.x);
 	dir2d/=c.r;
 	
-	double fovc=atan(2.0*c.r*tan(fovy)/((double)image.rows));
+	double fovc=atan(2.0*c.r*tan(fovy*M_PI/180.0)/((double)image.rows))*180.0/M_PI;
 	
 	return reflection_angle(fovc,dir2d);
 }
 
 std::vector<lightsource> get_lightsources(const std::vector<string>& images,const circle& c,float fovy,double ballrad=1.0,bool normalize_intensity=true)
 {
-	std::vector<lightsource> sources;
+	std::vector<lightsource> sources(images.size());
+	cerr << "Computing light sources" << endl;
+	#pragma omp parallel for
 	for(int i=0;i<images.size();i++)
 	{
+		cerr << i << ": Loading light source " << endl;
 		cv::Mat fm=read_floatmap(images[i]);
 		lightsource ls;
+		cerr << i << ": Computing the median intensity " << endl;
 		ls.intensity = median_color(fm);
+		cerr << i << ": r: " << ls.intensity << endl;
+		cerr << i << ": Finding the local direction" << endl;
 		ls.direction = get_lightsource_direction(fm,fovy,ballrad,c);
+		cerr << i << ": r: " << ls.direction << endl;
+		
+		sources[i]=ls;
 	}
 	if(normalize_intensity)
 	{
@@ -387,7 +403,7 @@ std::vector<lightsource> get_lightsources(const std::vector<string>& images,cons
 
 double get_fovy(double focal_length=135,double sensor_width_y=24)
 {
-	return 2.0*atan(sensor_width_y/(2.0*focal_length));
+	return 2.0*atan(sensor_width_y/(2.0*focal_length))*180.0/M_PI;
 }
 
 int main(int argc,char** argv)
@@ -396,7 +412,7 @@ int main(int argc,char** argv)
 	{
 		vector<string> args(argv,argv+argc);
 		vector<string> images;
-		bool preview=true;
+		bool preview=false;
 		double focal_length=-1.0;
 		double effective_sensor=24.0;
 		double ballrad=1.0;
@@ -433,9 +449,12 @@ int main(int argc,char** argv)
 			throw std::invalid_argument("You MUST specify the focal_length of the camera with --focal_length");
 		}
 		double fovy=get_fovy(focal_length,effective_sensor);
+		cerr << "Calculating circle from first image" << endl;
 		circle c=get_circle(read_floatmap(images[0]),preview);
+		cerr << "Got the circle from the first image at " << c << endl;
 		vector<string> directions(images.begin()+1,images.end());
 		vector<lightsource> sources=get_lightsources(directions,c,fovy,ballrad,normalize_intensity);
+		cout << "dx dy dz r g b\n";
 		for(auto s: sources)
 		{
 			cout << s << endl;
