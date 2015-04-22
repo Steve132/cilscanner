@@ -5,6 +5,7 @@
 #include<cmath>
 #include<opencv2/imgproc/imgproc.hpp>
 #include"floatmaps.hpp"
+#include"cilscanner.hpp"
 #include<algorithm>
 using namespace std;
 
@@ -15,28 +16,9 @@ struct circle
 	double r;
 };
 
-struct lightsource
-{
-	cv::Vec3f direction;
-	cv::Vec3f intensity;
-};
-
 ostream& operator<<(ostream& out,const circle& circ)
 {
 	return out << circ.x << ' ' << circ.y << ' ' << circ.r;
-}
-
-ostream& operator<<(ostream& out,const lightsource& ls)
-{
-	for(int i=0;i<3;i++)
-	{
-		out << ls.direction[i] << ' ';
-	}
-	for(int i=0;i<3;i++)
-	{
-		out << ls.intensity[i] << ' ';
-	}
-	return out;
 }
 
 cv::Vec3f median_color(const cv::Mat& imgin)
