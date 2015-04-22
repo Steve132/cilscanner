@@ -16,10 +16,10 @@ class Solver
 {
 public:
 	const vector<lightsource>& lightsources;
-	Eigen::Matrix<double,Dynamic,3> A; 
-	Eigen::JacobiSVD<MatrixX<double,Eigen::Dynamic,3> > svd;
+	Eigen::Matrix<double,Eigen::Dynamic,3> A; 
+	Eigen::JacobiSVD<Eigen::Matrix<double,Eigen::Dynamic,3> > svd;
 	Solver(const vector<lightsource>& ls):
-		lightsources(ls),
+		lightsources(ls)
 	{
 		for(int i=0;i<3;i++)
 		{
@@ -30,7 +30,7 @@ public:
 		}
 		svd.compute(A,Eigen::ComputeThinU | Eigen::ComputeThinV);
 	}
-	cv::Vec4f solve_xyzd_normal(const vector<double>& luminance)
+	cv::Vec4f solve_xyzd_normal(const Eigen::VectorXd& luminance)
 	{
 		Eigen::Vector3d solution=svd.solve(luminance);
 		double diffuse=solution.norm();
@@ -77,7 +77,7 @@ images_out solve(const vector<int>& patterns,
 	#pragma omp parallel for
 	for(size_t i=0;i<n;i++)
 	{
-		std::vector<float> l(p);
+		Eigen::VectorXd l(p);
 		final_result_out_per_pixel opp;
 		if(mask.data[i])
 		{
