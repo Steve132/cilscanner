@@ -3,13 +3,7 @@ import time
 import driver.cilscanner as cscan  #import the scanner driver
 import driver.cameracapture as camcap
 #sequence is a list of list of bools
-def capture_sequence(sequence,scanport=None,destination=""):
-	if(scanport):
-		scanner=cscan.Scanner(scanport)
-	else:
-		scanner=cscan.Scanner()
-	time.sleep(4)
-	cam=camcap.Camera(destination)
+def capture_sequence(cam,scanner,sequence):
 	for i in range(len(sequence)):
 		scanner.pattern(sequence[i])
 		time.sleep(0.5)
@@ -20,5 +14,7 @@ def capture_sequence(sequence,scanport=None,destination=""):
 if(__name__=="__main__"):
 	f=sys.stdin.read()
 	seq=[int(x,16) for x in f.split()]
-	capture_sequence(seq,scanport='/dev/ttyACM0')
+	scanner=cscan.Scanner('/dev/ttyACM0')
+	cam=camcap.Camera()
+	capture_sequence(cam,scanner,seq)
 
