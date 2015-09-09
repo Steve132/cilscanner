@@ -1,6 +1,5 @@
 #include<cmath>
 #include<opencv2/imgproc/imgproc.hpp>
-#include <CL/cl_platform.h>
 #include"floatmaps.hpp"
 #include"cilscanner.hpp"
 #include<Eigen/Dense>

@@ -14,7 +14,7 @@ def capture_sequence(cam,scanner,sequence):
 if(__name__=="__main__"):
 	f=sys.stdin.read()
 	seq=[int(x,16) for x in f.split()]
-	scanner=cscan.Scanner('/dev/ttyACM0')
+	scanner=cscan.Scanner()
 	cam=camcap.Camera()
 	capture_sequence(cam,scanner,seq)
 
