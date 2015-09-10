@@ -17,10 +17,11 @@ class Camera(object):
 			farg=["--filename",self.filename+"%03n.%C"]
 	
 		if(not self.gp):
+			# TODO: Eject camera i.e. umount or even with gphoto2
 			if(last):
 				subprocess.Popen(["gphoto2","--capture-image-and-download"]+farg,cwd=self.cwd)
 			else:
-				self.gp=subprocess.Popen(["gphoto2","-I","-1","--capture-image-and-download"]+farg,cwd=self.cwd)
+				self.gp=subprocess.Popen(["gphoto2","-I","-1","--capture-image-and-download"]+farg, cwd=self.cwd)#+farg,cwd=self.cwd)
 		else:
 			if(last):
 				self.gp.send_signal(signal.SIGUSR2)

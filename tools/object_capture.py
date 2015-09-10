@@ -4,6 +4,7 @@ import driver.cameracapture as camcap
 import os,os.path,shutil
 import json
 import datetime
+import argparse
 
 calibsequence=[0xFFFF]+[ (1 << x) for x in range(16)]
 
@@ -59,7 +60,11 @@ if(__name__=="__main__"):
 	ts=get_timestamp()
 	os.makedirs(ts)
 	os.chdir(ts)
-	flen=int(raw_input("What is the focal length? "))
-	capture_calibration(camera,scanner,focal_length=flen,do_background=True)
+	flen=35#int(raw_input("What is the focal length? "))
+	parser = argparse.ArgumentParser(description='Capture some objects.')
+	parser.add_argument('--calibrate', help='Run calibration')
+	args = parser.parse_args()
+	if(args.calibrate):
+		capture_calibration(camera,scanner,focal_length=flen,do_background=True)
 	while(capture_object(camera,scanner)):
 		pass

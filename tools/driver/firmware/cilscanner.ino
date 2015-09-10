@@ -10,7 +10,7 @@ void setup() {
     pinMode(led_pins[i], OUTPUT);
     digitalWrite(led_pins[i],LOW);
   }  
-  for(int i=0;i<16;i++)
+/*  for(int i=0;i<16;i++)
   {
     digitalWrite(led_pins[i],HIGH);
     delay(50);
@@ -19,7 +19,7 @@ void setup() {
   {
     digitalWrite(led_pins[i],LOW);
     delay(50);
-  }
+  }*/
   
   Serial.begin(9600);
 }
